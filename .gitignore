@@ -1,0 +1,6 @@
+__vscode__/
+__pycache__/
+.vscode
+.VSCodeCounter
+*.txt
+models/
