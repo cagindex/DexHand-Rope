@@ -80,7 +80,7 @@ target_quat = torch.tensor([1.0, 0.0, 0.0, 0.0]).reshape((-1, 4)).cuda()
 start_pos = torch.tensor([0.0, -3.0, 1.0]).reshape((-1, 3)).cuda()
 end_pos = torch.tensor([0.0, -2.0, 1.0]).reshape((-1, 3)).cuda()
 pd_controller = Articulation_PD_Controller(
-                    pos_kp=100.0, pos_kd=10.0, ore_kp=10.0, ore_kd=0.1,
+                    pos_kp=1000.0, pos_kd=100.0, ore_kp=10.0, ore_kd=1.0,
                     target_pos=target_pos, target_quat=target_quat)
 line_trajectory = Line_Trajectory(start_pos=start_pos, end_pos=end_pos, rate=0.3)
 
@@ -115,10 +115,6 @@ def design_scene():
     # Articulation
     shadow_hand_cfg = LEFT_HAND_CFG.copy()
     shadow_hand_cfg.prim_path = "/World/Robot"
-    shadow_hand_cfg.spawn.rigid_props.disable_gravity = False
-    shadow_hand_cfg.spawn.rigid_props.retain_accelerations = False
-    shadow_hand_cfg.spawn.rigid_props.enable_gyroscopic_forces = True
-    shadow_hand_cfg.spawn.articulation_props.fix_root_link = False
     shadow_hand = Articulation(cfg=shadow_hand_cfg)
 
     scene_entities = {

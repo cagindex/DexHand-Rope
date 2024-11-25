@@ -2,9 +2,29 @@ import torch
 import numpy as np
 import omni.isaac.lab.utils.math as math_utils
 
-def convert_quat_to_wxyz(q: torch.Tensor)->torch.Tensor:
-    # convert quaternion from xyzw to wxyz
-    return q[:, [3, 0, 1, 2]]
+######################################
+# Class Definition
+######################################
+class Info:
+    def __init__(self, pos: torch.Tensor, quat: torch.Tensor, dof: torch.Tensor):
+        self.pos = pos
+        self.quat = quat
+        self.dof = dof
+
+
+######################################
+# Function Definition
+######################################
+
+def get_body_index(robot, body_name: str):
+    robot_body_names: list = robot.body_names
+    return robot_body_names.index(body_name) if body_name is not None else 0
+
+def str2tensor(s: str)->tuple[torch.Tensor, torch.Tensor]:
+    bvh_str, thumb_dofs = s.split('(')
+    bvh_data = torch.tensor(np.fromstring(bvh_str.strip(), dtype=float, sep=' '))
+    thumb_dofs = torch.tensor(np.fromstring(thumb_dofs[:-1].strip(), dtype=float, sep=' '))
+    return bvh_data, thumb_dofs
 
 def vector_local2world(vec, quat):
     return math_utils.quat_apply(quat, vec)
@@ -12,15 +32,9 @@ def vector_local2world(vec, quat):
 def vector_world2local(vec, quat):
     return math_utils.quat_apply(math_utils.quat_conjugate(quat), vec)
 
-def get_body_index(robot, body_name: str):
-    robot_body_names: list = robot.body_names
-    return robot_body_names.index(body_name) if body_name is not None else 0
-
-def str2tensor(s: str)->tuple[torch.Tensor, torch.Tensor]:
-    bvh_str, thumb_dofs = s.split('|')
-    bvh_data = torch.tensor(np.fromstring(bvh_str.strip(), dtype=float, sep=' '))
-    thumb_dofs = torch.tensor(np.fromstring(thumb_dofs.strip(), dtype=float, sep=' '))
-    return bvh_data, thumb_dofs
+def convert_quat_to_wxyz(q: torch.Tensor)->torch.Tensor:
+    # convert quaternion from xyzw to wxyz
+    return q[:, [3, 0, 1, 2]]
 
 @torch.jit.script
 def position_left2right(pos: torch.Tensor):
@@ -116,16 +130,24 @@ def decode_quaternion_to_2dof(quat: torch.Tensor)->tuple[torch.Tensor, torch.Ten
     return theta_x, theta_z
 
 
-
-def right_hand_decode(frame_data: str)->tuple[torch.tensor, torch.tensor, torch.tensor]:
+# region Decode from Unity
+def right_hand_decode(frame_data: str)->tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     frame_data, thumb_dofs = str2tensor(frame_data) 
+    return __right_hand_decode(frame_data, thumb_dofs)
+
+def left_hand_decode(frame_data: str)->tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    frame_data, thumb_dofs = str2tensor(frame_data) 
+    return __left_hand_decode(frame_data, thumb_dofs)
+
+
+@torch.jit.script
+def __right_hand_decode(frame_data: torch.Tensor, thumb_dofs: torch.Tensor)->tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     indices = [0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19]
 
     # Assign root position and quaternion and joints quaternion  
     root_pos = position_left2right(frame_data[:3])
     quaternions = convert_quat_to_wxyz(frame_data[3:].reshape(-1, 4)[indices])
     root_quat = quaternion_left2right(quaternions[0])
-    thumb_quat = quaternions[1]
     finger_root_orientation = quaternions[[4, 7 ,10, 13]]
     other_joint_orientation = quaternions[[2, 3, 5, 6, 8, 9, 11, 12, 14, 15]]
 
@@ -133,14 +155,11 @@ def right_hand_decode(frame_data: str)->tuple[torch.tensor, torch.tensor, torch.
     dof1_positive_idx = [12, 17, 13, 18, 14, 19, 20, 22]
     dof1_negative_idx = [21, 23]
     dof2_finger_idx = [[1, 2, 3, 10], [7, 8, 9, 15]]
-    dof2_thumb_idx = [[5], [11]]
-    dof1_thumb = [21, 23]
 
     dof = torch.zeros(24, dtype=root_pos.dtype)
     #1. convert finger other joints orientation
     x, y, z = euler_from_quat(other_joint_orientation, 1, 2, 3)
     dof[dof1_negative_idx + dof1_positive_idx] = -z.flatten() 
-    dof[dof1_negative_idx] *= -1
 
     #2. Convert finger root orientation
     x, z, y = euler_from_quat(finger_root_orientation, 1, 3, 2)
@@ -148,24 +167,49 @@ def right_hand_decode(frame_data: str)->tuple[torch.tensor, torch.tensor, torch.
     dof[dof2_finger_idx[1]] = -z.flatten()
 
     #3. Convert thumb root orientation
-    # RyP45 = math_utils.quat_from_euler_xyz(torch.tensor(0), torch.tensor(np.pi/4), torch.tensor(0)).double()
-    # RxN90 = math_utils.quat_from_euler_xyz(-torch.tensor(np.pi/2), torch.tensor(0), torch.tensor(0)).double()
-    # # thumb_quat_ = quat_mul(thumb_quat, quat_mul(RxN90, RyP45))
-    # # thumb_quat_new = quat_mul(RyP45, quat_mul(thumb_quat_, quat_inv(RyP45)))
-    # thumb_quat_new = math_utils.quat_mul(RyP45, math_utils.quat_mul(thumb_quat, RxN90))
-    # print("新坐标系下的大拇指根旋转：")
-    # print(thumb_quat_new.round_(decimals=4).tolist())
-    # y, x, z = euler_from_quat(thumb_quat_new.reshape(-1, 4), 2, 1, 3)
-    # print("大拇指角度xyz：")
-    # print("%2f %2f %2f" % (180*x.item()/np.pi, 180*y.item()/np.pi, 180*z.item()/np.pi))
-    # theta_x, theta_z = decode_quaternion_to_2dof(thumb_quat_new)
-    # print("大拇指关节角度xz：")
-    # print("%2f %2f" % (180*theta_x.item()/np.pi, 180*theta_z.item()/np.pi))
-    dof[dof2_thumb_idx[0]] = thumb_dofs[0]
-    dof[dof2_thumb_idx[1]] = -thumb_dofs[1]
-    dof[dof1_thumb[0]] = thumb_dofs[2]
-    dof[dof1_thumb[1]] = thumb_dofs[3]
+    dof[[5, 11, 16, 21, 23]] = thumb_dofs
     return root_pos.float(), root_quat.float(), dof
 
 
+@torch.jit.script
+def __left_hand_decode(frame_data: torch.Tensor, thumb_dofs: torch.Tensor)->tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    indices = [0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19]
 
+    # Assign root position and quaternion and joints quaternion  
+    root_pos = position_left2right(frame_data[:3])
+    quaternions = convert_quat_to_wxyz(frame_data[3:].reshape(-1, 4)[indices])
+    root_quat = quaternion_left2right(quaternions[0])
+    finger_root_orientation = quaternions[[4, 7 ,10, 13]]
+    other_joint_orientation = quaternions[[2, 3, 5, 6, 8, 9, 11, 12, 14, 15]]
+
+    # Init joints indices
+    dof1_positive_idx = [12, 17, 13, 18, 14, 19, 20, 22]
+    dof2_finger_idx = [[1, 2, 3, 10], [7, 8, 9, 15]]
+    dof1_negative_idx = [21, 23]
+
+    dof = torch.zeros(24, dtype=root_pos.dtype)
+    #1. convert finger other joints orientation
+    x, y, z = euler_from_quat(other_joint_orientation, 1, 2, 3)
+    dof[dof1_negative_idx + dof1_positive_idx] = z.flatten() 
+
+    #2. Convert finger root orientation
+    x, z, y = euler_from_quat(finger_root_orientation, 1, 3, 2)
+    # dof[dof2_finger_idx[0]] = -y.flatten()
+    dof[dof2_finger_idx[1]] = z.flatten()
+
+    #3. Convert thumb root orientation
+    dof[[5, 11, 16, 21, 23]] = thumb_dofs
+    return root_pos.float(), root_quat.float(), dof
+# endregion
+
+def set_object_gravity(obj, gravity: bool, env_ids: list = [0]):
+    """
+    Set the gravity of an object.
+    gravity: True to enable gravity, False to disable.
+    obj must be omni.isaac.lab.assets.RigidObject or omni.isaac.lab.assets.ArticulatedObject.
+    """
+    env_ids = torch.tensor(env_ids, device=obj.device)
+    current_gravity_status = obj.root_physx_view.get_disable_gravities()
+    # 0: disable_gravity=false(with gravity) / 1: disable_gravity=true(without gravity)
+    current_gravity_status[env_ids] = int(not gravity)
+    obj.root_physx_view.set_disable_gravities(current_gravity_status, env_ids)

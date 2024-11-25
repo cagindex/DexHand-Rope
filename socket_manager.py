@@ -25,7 +25,7 @@ class Socket:
         self.client_socket.send(byte_data)
     
     def receive(self)->str:
-        received_data = self.client_socket.recv(1024)
+        received_data = self.client_socket.recv(2048)
         if not received_data:
             return None
         received_data = received_data.decode('utf-8')
@@ -42,12 +42,32 @@ class Socket_Manager:
     def send(self):
         self.socket.send(sent_data="STAR PLATINUM | THE WORLD!")
     
-    def receive(self)->torch.tensor:
-        local_frame_data: str = self.socket.receive()
-        return self.decode(local_frame_data)
+    def receive(self)->tuple[Info, Info]:
+        """Receive the data from the socket and decode it.
+        The data is in the format of "left_frame_data|right_frame_data".
 
-    def decode(self, frame_data: str)->tuple[torch.tensor, torch.tensor, torch.tensor]:
+        left(right)_frame_data: "x y z q1x q1y q1z q1w ... (thumbAngle)"
+
+        thumbAngle: "THJ5 THJ4 THJ3 THJ2 THJ1"
+
+        :return tuple[Info, Info]: _description_
+        """
+        received_data: str = self.socket.receive()
+        left_frame_data, right_frame_data = received_data.split('|')
+        left_info = self.__left_decode(left_frame_data)
+        right_info = self.__right_decode(right_frame_data)
+        return left_info, right_info
+
+    def __right_decode(self, frame_data: str)->Info:
+        offset_orientation = torch.tensor([[0.7071068, 0.0, 0.7071068, 0.0]]) # The offset rotation for forearm
+        # offset_orientation = torch.tensor([[0.5, 0.5, 0.5, 0.5]]) # The offset rotation for palm
         root_pos, root_rot, dof = right_hand_decode(frame_data)
-        offset_orientation = torch.tensor([[0.5, 0.5, 0.5, 0.5]], dtype=torch.float32)
         root_rot = math_utils.quat_mul(root_rot, offset_orientation)
-        return root_pos, root_rot, dof
+        return Info(root_pos, root_rot, dof)
+    
+    def __left_decode(self, frame_data: str)->tuple[torch.tensor, torch.tensor, torch.tensor]:
+        offset_orientation = torch.tensor([[0.0, 0.7071068, 0.0, -0.7071068]]) # The offset rotation for forearm
+        # offset_orientation = torch.tensor([[0.5, 0.5, -0.5, -0.5]]) # The offset rotation for palm
+        root_pos, root_rot, dof = left_hand_decode(frame_data)
+        root_rot = math_utils.quat_mul(root_rot, offset_orientation)
+        return Info(root_pos, root_rot, dof)

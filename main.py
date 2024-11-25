@@ -20,8 +20,8 @@ import torch
 import numpy as np
 from my_utils import *
 from socket_manager import Socket_Manager
-from pd_controller import Robot_Controller, Rigid_Body_Controller
-from hands_configs import RIGHT_HAND_CFG, LEFT_HAND_CFG
+from controller import Articulation_Controller, Rigid_Body_Controller
+from model_configs import RIGHT_HAND_CFG, LEFT_HAND_CFG
 
 def design_scene() -> tuple[dict, list[list[float]]]:
     """Designs the scene."""
@@ -32,103 +32,70 @@ def design_scene() -> tuple[dict, list[list[float]]]:
     cfg = sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75))
     cfg.func("/World/Light", cfg)
 
-    # Rigid body
-    table_cfg = RigidObjectCfg(
-        prim_path = "/World/Table",
-        spawn=sim_utils.CuboidCfg(
-            size=(1.5, 2.0, 0.40),
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
-            mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0), metallic=0.2),
-        ),
-        init_state=RigidObjectCfg.InitialStateCfg(
-            pos=(0.0, 0.0, 0.35),
-            rot=(0.0, 0.0, 1.0, 0.0)
-        ),
-    )
-    object_cfg = RigidObjectCfg(
-        prim_path = "/World/Object",
-        spawn=sim_utils.CylinderCfg(
-            radius=0.03,
-            height=0.30,
-            axis='Z',
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
-            mass_props=sim_utils.MassPropertiesCfg(mass=0.01),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0), metallic=0.2),
-        ),
-        # spawn=sim_utils.CuboidCfg(
-        #     size=(0.05, 0.05, 0.05),
-        #     rigid_props=sim_utils.RigidBodyPropertiesCfg(),
-        #     mass_props=sim_utils.MassPropertiesCfg(mass=0.012),
-        #     collision_props=sim_utils.CollisionPropertiesCfg(),
-        #     visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0), metallic=0.2),
-        # ),
-        init_state=RigidObjectCfg.InitialStateCfg(
-            pos=(0.0, 0.0, 0.8),
-            rot=(1.0, 0.0, 0.0, 0.0)
-        ),
-    )
-    # table = RigidObject(cfg = table_cfg)
-    # object = RigidObject(cfg = object_cfg)
-
+    # Rope
+    rope_cfg = sim_utils.UsdFileCfg(usd_path="models/ropes500.usd")
+    rope_cfg.func("/World/rope", rope_cfg, translation=(0.0, -0.1, 0.8))
 
     # Articulation
-    shadow_hand_cfg = RIGHT_HAND_CFG.copy()
-    shadow_hand_cfg.prim_path = "/World/Robot"
-    shadow_hand_cfg.spawn.rigid_props.disable_gravity = False
-    shadow_hand_cfg.spawn.rigid_props.retain_accelerations = False
-    shadow_hand_cfg.spawn.rigid_props.enable_gyroscopic_forces = True
-    shadow_hand_cfg.spawn.articulation_props.fix_root_link = False
-    shadow_hand_cfg.spawn.articulation_props.enabled_self_collisions = False
-    shadow_hand_cfg.spawn.articulation_props.solver_position_iteration_count = 16
-    shadow_hand_cfg.spawn.articulation_props.solver_velocity_iteration_count = 4
+    right_hand_cfg = RIGHT_HAND_CFG.copy()
+    right_hand_cfg.prim_path = "/World/hands/right_hand"
 
-    shadow_hand_cfg.init_state.pos = (0.0, 0.0, 1.0)
-    shadow_hand = Articulation(cfg=shadow_hand_cfg)
+    left_hand_cfg = LEFT_HAND_CFG.copy()
+    left_hand_cfg.prim_path = "/World/hands/left_hand"
+
+    right_hand_cfg.init_state.pos = (0.5, 0.0, 0.8)
+    left_hand_cfg.init_state.pos = (-0.5, 0.0, 0.8)
+
+    right_hand = Articulation(cfg=right_hand_cfg)
+    left_hand = Articulation(cfg=left_hand_cfg)
     # return the scene information
-    scene_entities = {"shadow_hand": shadow_hand}
-    # scene_entities = {"shadow_hand": shadow_hand, "rigids": [table, object]}
-
+    scene_entities = {
+        "shadow_hand": {
+            "left_hand": left_hand,
+            "right_hand": right_hand,
+        },
+    }
     return scene_entities
 
 def run_simulator(sim: sim_utils.SimulationContext, entities: dict[str, Articulation]):
     # socket_server_manager.listen()
-    robot = entities["shadow_hand"]
-    # rigids = entities["rigids"]
-    body_name = 'rh_forearm'
-    body_idx = get_body_index(robot, body_name)
+    hands = entities["shadow_hand"]
+    left_hand = hands["left_hand"]
+    right_hand = hands["right_hand"]
 
-    print(robot.joint_names, len(robot.joint_names))
+    print("The Left Hand Joint Names: ")
+    print(left_hand.joint_names)
+    print("The Right Hand Joint Names: ")
+    print(right_hand.joint_names)
 
     sim_dt = sim.get_physics_dt()
     # Simulation loop
-    # fp = './data/rightHand.txt'
-    # manager = File_Manager(fp) 
-    manager = Socket_Manager(host='127.0.0.1', port=12345)
+    manager = Socket_Manager(host='127.0.0.1', port=6781)
     manager.listen()
-    robot_controller = Robot_Controller(pos_kp=1000.0, pos_kd=100.0, ore_kp=10.0, ore_kd=0.5)
+    left_hand_controller = Articulation_Controller(
+        robot=left_hand, root_name='lh_forearm',
+        pos_kp=1000.0, pos_kd=100.0, ore_kp=10.0, ore_kd=1.0
+    )
+    right_hand_controller = Articulation_Controller(
+        robot=right_hand, root_name='rh_forearm',
+        pos_kp=1000.0, pos_kd=100.0, ore_kp=10.0, ore_kd=1.0
+    )
     while simulation_app.is_running():
         # position, orientation, dof = manager.step()
         manager.send()
-        position, orientation, dof = manager.receive()
+        left_info, right_info = manager.receive()
 
-        robot.set_joint_position_target(dof)
-        robot_controller.set_target_pose(position, orientation)
-        robot_controller.step(robot, body_idx)
+        left_hand_controller.step(left_hand, left_info)
+        right_hand_controller.step(right_hand, right_info)
         # rb_controller.step(rigid)
 
-        robot.write_data_to_sim()
-        # rigids[0].write_data_to_sim()
-        # rigids[1].write_data_to_sim()
+        left_hand.write_data_to_sim()
+        right_hand.write_data_to_sim()
         # Perform step
         sim.step(render=True)
         # Update buffers
-        robot.update(sim_dt)
-        # rigids[0].update(sim_dt)
-        # rigids[1].update(sim_dt)
-        # break
+        left_hand.update(sim_dt)
+        right_hand.update(sim_dt)
 
 
 def main():

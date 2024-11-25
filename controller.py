@@ -1,8 +1,7 @@
 import torch
 import omni.isaac.lab.utils.math as math_utils
 from omni.isaac.lab.assets import ArticulationData, RigidObjectData
-from my_utils import vector_world2local, vector_local2world
-
+from my_utils import vector_world2local, vector_local2world, get_body_index, Info
 
 class PD_Controller:
     def __init__(self, pos_kp, pos_kd, ore_kp, ore_kd):
@@ -35,11 +34,14 @@ class PD_Controller:
         torque_w = self.ore_kp * orientation_error - self.ore_kd * (current_ang_vel - self.target_ang_vel.to(device=current_pos.device))
         return (force_w, torque_w)
 
-class Robot_Controller(PD_Controller):
+class Articulation_PD_Controller(PD_Controller):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     
     def step(self, robot, body_idx):
+        return self.__step(robot, body_idx)
+    
+    def sstep(self, robot, body_idx):
         body_quat_w = robot.data.body_quat_w[0]
         current_pos, current_quat = robot.data.body_pos_w[..., body_idx, :], robot.data.body_quat_w[..., body_idx, :]
         current_lin_vel, current_ang_vel = robot.data.body_lin_vel_w[..., body_idx, :], robot.data.body_ang_vel_w[..., body_idx, :]
@@ -68,4 +70,15 @@ class Rigid_Body_Controller(PD_Controller):
             forces=force_b,
             torques=torque_b,
         )
+    
 
+
+class Articulation_Controller(Articulation_PD_Controller):
+    def __init__(self, robot, root_name, **kwargs):
+        super().__init__(**kwargs)
+        self.body_idx = get_body_index(robot, root_name)
+    
+    def step(self, robot, info: Info):
+        robot.set_joint_position_target(info.dof)
+        self.set_target_pose(info.pos, info.quat)
+        self.sstep(robot, self.body_idx)

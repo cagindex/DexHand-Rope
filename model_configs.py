@@ -4,17 +4,19 @@ from omni.isaac.lab.assets.articulation import ArticulationCfg
 
 LEFT_HAND_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path="./models/left_hand.usd",
+        usd_path="./models/left_hand_new.usd",
         activate_contact_sensors=False,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            disable_gravity=True,
-            retain_accelerations=True,
+            disable_gravity=False,
+            retain_accelerations=False,
+            enable_gyroscopic_forces=True,
             max_depenetration_velocity=1000.0,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=True,
-            solver_position_iteration_count=8,
-            solver_velocity_iteration_count=0,
+            fix_root_link=False,
+            enabled_self_collisions=False,
+            solver_position_iteration_count=16,
+            solver_velocity_iteration_count=4,
             sleep_threshold=0.005,
             stabilization_threshold=0.0005,
         ),
@@ -63,17 +65,19 @@ LEFT_HAND_CFG = ArticulationCfg(
 
 RIGHT_HAND_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path="./models/right_hand.usd",
+        usd_path="./models/right_hand_new.usd",
         activate_contact_sensors=False,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            disable_gravity=True,
-            retain_accelerations=True,
+            disable_gravity=False,
+            retain_accelerations=False,
+            enable_gyroscopic_forces=True,
             max_depenetration_velocity=1000.0,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=True,
-            solver_position_iteration_count=8,
-            solver_velocity_iteration_count=0,
+            fix_root_link=False,
+            enabled_self_collisions=False,
+            solver_position_iteration_count=16,
+            solver_velocity_iteration_count=8,
             sleep_threshold=0.005,
             stabilization_threshold=0.0005,
         ),
@@ -119,3 +123,30 @@ RIGHT_HAND_CFG = ArticulationCfg(
     soft_joint_pos_limit_factor=1.0,
 )
 
+ROPE_CFG = ArticulationCfg(
+    spawn=sim_utils.UsdFileCfg(
+        usd_path="./models/ropes.usd",
+        activate_contact_sensors=False,
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            retain_accelerations=False,
+            enable_gyroscopic_forces=True,
+            max_depenetration_velocity=1000.0,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            fix_root_link=False,
+            enabled_self_collisions=False,
+            solver_position_iteration_count=16,
+            solver_velocity_iteration_count=8,
+            sleep_threshold=0.005,
+            stabilization_threshold=0.0005,
+        ),
+        # collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.005, rest_offset=0.0),
+        joint_drive_props=sim_utils.JointDrivePropertiesCfg(drive_type="force"),
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.0, 0.5),
+        rot=(1.0, 0.0, 0.0, 0.0),
+        joint_pos={".*": 0.0},
+    ),
+)

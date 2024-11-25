@@ -19,7 +19,7 @@ import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import Articulation
 from omni.isaac.lab.sim import SimulationContext
 
-from hands_configs import RIGHT_HAND_CFG, LEFT_HAND_CFG 
+from model_configs import RIGHT_HAND_CFG, LEFT_HAND_CFG, ROPE_CFG 
 
 
 def design_scene() -> tuple[dict, list[list[float]]]:
@@ -31,69 +31,27 @@ def design_scene() -> tuple[dict, list[list[float]]]:
     cfg = sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75))
     cfg.func("/World/Light", cfg)
 
-    # Each group will have a robot in it
-    origins = [[0.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]
-    # Origin 1
-    prim_utils.create_prim("/World/Origin1", "Xform", translation=origins[0])
-    # Origin 2
-    prim_utils.create_prim("/World/Origin2", "Xform", translation=origins[1])
+    # rope_cfg = ROPE_CFG.copy() 
+    # rope = Articulation(cfg=rope_cfg)
+    rope_cfg = sim_utils.UsdFileCfg(usd_path="models/ropes.usd")
+    rope_cfg.func("/World/rope", rope_cfg, translation=(0.0, -0.1, 0.8))
 
-    # Right Hand
-    right_hand_cfg = RIGHT_HAND_CFG.copy()
-    right_hand_cfg.prim_path = "/World/Origin1/RightHand"
-    right_hand_cfg.spawn.rigid_props.disable_gravity = False
-    right_hand_cfg.spawn.rigid_props.retain_accelerations = False
-    right_hand_cfg.spawn.rigid_props.enable_gyroscopic_forces = True
-    right_hand_cfg.spawn.articulation_props.fix_root_link = False
-    right_hand_cfg.spawn.articulation_props.enabled_self_collisions = False
-    right_hand_cfg.spawn.articulation_props.solver_position_iteration_count = 16
-    right_hand_cfg.spawn.articulation_props.solver_velocity_iteration_count = 4
-    right_hand = Articulation(cfg=right_hand_cfg)
 
-    # Left Hand
-    left_hand_cfg = LEFT_HAND_CFG.copy()
-    left_hand_cfg.prim_path = "/World/Origin2/LeftHand"
-    left_hand_cfg.spawn.rigid_props.disable_gravity = False
-    left_hand_cfg.spawn.rigid_props.retain_accelerations = False
-    left_hand_cfg.spawn.rigid_props.enable_gyroscopic_forces = True
-    left_hand_cfg.spawn.articulation_props.fix_root_link = False
-    left_hand_cfg.spawn.articulation_props.enabled_self_collisions = False
-    left_hand_cfg.spawn.articulation_props.solver_position_iteration_count = 16
-    left_hand_cfg.spawn.articulation_props.solver_velocity_iteration_count = 4
-    left_hand = Articulation(cfg=left_hand_cfg)
-
-    scene_entities = {"left_hand": left_hand, "right_hand": right_hand}
+    scene_entities = []
     return scene_entities
 
 
 def run_simulator(sim: sim_utils.SimulationContext, entities: dict[str, Articulation]):
     """Runs the simulation loop."""
-    left_hand = entities["left_hand"]
-    right_hand = entities["right_hand"]
-
-    mode = 0
-    count = 0
     # Define simulation stepping
     sim_dt = sim.get_physics_dt()
     # Simulation loop
     while simulation_app.is_running():
-        if count % 100 == 0:
-            mode = 1 - mode
-        left_target_dof = left_hand.data.soft_joint_pos_limits[..., mode]
-        right_target_dof = right_hand.data.soft_joint_pos_limits[..., mode]
-
-        # Set target joint positions
-        left_hand.set_joint_position_target(left_target_dof)
-        right_hand.set_joint_position_target(right_target_dof)
-
-        left_hand.write_data_to_sim()
-        right_hand.write_data_to_sim()
-        # Perform step
+        for item in entities:
+            item.write_data_to_sim()
         sim.step()
-        count += 1
-        # Update buffers
-        left_hand.update(sim_dt)
-        right_hand.update(sim_dt)
+        for item in entities:
+            item.update(sim_dt)
 
 
 def main():

@@ -93,7 +93,7 @@ class Circle_Cone_Trajectory:
         root_quat = math_utils.quat_from_matrix(torch.stack([_x_, _y_, _z_], dim=1))
         return root.reshape((-1, 3)), root_quat.reshape((-1, 4))
 
-pd_controller = PD_Controller(pos_kp=100.0, pos_kd=10.0, ore_kp=10.0, ore_kd=0.1,
+pd_controller = PD_Controller(pos_kp=1000.0, pos_kd=100.0, ore_kp=10.0, ore_kd=1.0,
                               target_pos=torch.tensor([[0.0, 0.0, 2.0]]), target_quat=torch.tensor([[1.0, 0.0, 0.0, 0.0]]))
 circle_cone_trajectory = Circle_Cone_Trajectory(radius=1.0, h=1.0, H=2.0)
 ##############################
@@ -111,10 +111,7 @@ def design_scene() -> tuple[dict, list[list[float]]]:
     # Articulation
     shadow_hand_cfg = LEFT_HAND_CFG.copy()
     shadow_hand_cfg.prim_path = "/World/Robot"
-    shadow_hand_cfg.spawn.rigid_props.disable_gravity = False
-    shadow_hand_cfg.spawn.rigid_props.retain_accelerations = False
-    shadow_hand_cfg.spawn.rigid_props.enable_gyroscopic_forces = True
-    shadow_hand_cfg.spawn.articulation_props.fix_root_link = False
+
     shadow_hand = Articulation(cfg=shadow_hand_cfg)
     # return the scene information
     scene_entities = {"shadow_hand": shadow_hand}
