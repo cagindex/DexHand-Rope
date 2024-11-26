@@ -1,3 +1,9 @@
+'''
+confi_point_to_test.py
+
+用来测试 Articulation 类型的碰撞
+在这之前要测试 confi_pd_test.py
+'''
 import argparse
 from omni.isaac.lab.app import AppLauncher
 parser = argparse.ArgumentParser(description="Tutorial on spawning and interacting with a rigid object.")

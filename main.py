@@ -12,6 +12,7 @@ simulation_app = app_launcher.app
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import Articulation, RigidObject, RigidObjectCfg
 from omni.isaac.lab.assets.articulation import ArticulationCfg
+from omni.isaac.lab.scene import InteractiveScene, InteractiveSceneCfg
 from omni.isaac.lab.actuators.actuator_cfg import ImplicitActuatorCfg
 from omni.isaac.lab.sim import SimulationContext
 from omni.isaac.lab_assets import SHADOW_HAND_CFG

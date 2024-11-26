@@ -1,3 +1,8 @@
+'''
+confi_reset_test.py
+
+用来测试手的抓合功能
+'''
 import argparse
 from omni.isaac.lab.app import AppLauncher
 # add argparse arguments

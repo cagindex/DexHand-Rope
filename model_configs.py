@@ -1,3 +1,6 @@
+'''
+存放所有模型的 CFG
+'''
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.actuators.actuator_cfg import ImplicitActuatorCfg
 from omni.isaac.lab.assets.articulation import ArticulationCfg
@@ -125,7 +128,7 @@ RIGHT_HAND_CFG = ArticulationCfg(
 
 ROPE_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path="./models/ropes.usd",
+        usd_path="./models/rope3.usd",
         activate_contact_sensors=False,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -134,7 +137,7 @@ ROPE_CFG = ArticulationCfg(
             max_depenetration_velocity=1000.0,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            fix_root_link=False,
+            fix_root_link=True,
             enabled_self_collisions=False,
             solver_position_iteration_count=16,
             solver_velocity_iteration_count=8,
@@ -142,7 +145,7 @@ ROPE_CFG = ArticulationCfg(
             stabilization_threshold=0.0005,
         ),
         # collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.005, rest_offset=0.0),
-        joint_drive_props=sim_utils.JointDrivePropertiesCfg(drive_type="force"),
+        # joint_drive_props=sim_utils.JointDrivePropertiesCfg(drive_type="force"),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.5),

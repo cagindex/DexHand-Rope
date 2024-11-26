@@ -1,3 +1,8 @@
+'''
+confi_pd_test.py
+
+用来测试 Articulation 类型的 PD 控制器。
+'''
 import argparse
 from omni.isaac.lab.app import AppLauncher
 
@@ -26,7 +31,7 @@ from omni.isaac.lab.assets import Articulation, ArticulationData
 from omni.isaac.lab.sim import SimulationContext
 
 # Pre-defined configs
-from hands_configs import RIGHT_HAND_CFG, LEFT_HAND_CFG
+from model_configs import RIGHT_HAND_CFG, LEFT_HAND_CFG
 
 ##############################
 # PD Controller for Articulation
