@@ -2,6 +2,7 @@ import argparse
 from omni.isaac.lab.app import AppLauncher
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--num_envs", type=int, default=1, help="Number of environments to spawn.")
 AppLauncher.add_app_launcher_args(parser)
 
 args_cli = parser.parse_args()
@@ -10,12 +11,11 @@ app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.assets import Articulation, RigidObject, RigidObjectCfg
-from omni.isaac.lab.assets.articulation import ArticulationCfg
+from omni.isaac.lab.assets import RigidObjectCfg, AssetBaseCfg
+from omni.isaac.lab.assets import ArticulationCfg
 from omni.isaac.lab.scene import InteractiveScene, InteractiveSceneCfg
-from omni.isaac.lab.actuators.actuator_cfg import ImplicitActuatorCfg
 from omni.isaac.lab.sim import SimulationContext
-from omni.isaac.lab_assets import SHADOW_HAND_CFG
+from omni.isaac.lab.utils import configclass
 
 import torch
 import numpy as np
@@ -24,50 +24,42 @@ from socket_manager import Socket_Manager
 from controller import Articulation_Controller, Rigid_Body_Controller
 from model_configs import RIGHT_HAND_CFG, LEFT_HAND_CFG
 
-def design_scene() -> tuple[dict, list[list[float]]]:
+@configclass
+class SceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
     # Ground-plane
-    cfg = sim_utils.GroundPlaneCfg()
-    cfg.func("/World/defaultGroundPlane", cfg)
+    ground = AssetBaseCfg(prim_path="/World/defaultGroundPlane", spawn=sim_utils.GroundPlaneCfg())
     # Lights
-    cfg = sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75))
-    cfg.func("/World/Light", cfg)
+    dome_light = AssetBaseCfg(
+        prim_path="/World/Light", spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75))
+    )
 
     # Rope
-    rope_cfg = sim_utils.UsdFileCfg(usd_path="models/ropes500.usd")
-    rope_cfg.func("/World/rope", rope_cfg, translation=(0.0, -0.1, 0.8))
+    rope = AssetBaseCfg(
+        prim_path="/World/rope",
+        spawn=sim_utils.UsdFileCfg(usd_path="models/rope3_no_articulation.usd"),
+        init_state=AssetBaseCfg.InitialStateCfg(
+            pos=(0.0, 0.0, 1.0),
+            rot=(1.0, 0.0, 0.0, 0.0),
+        )
+    )
 
     # Articulation
-    right_hand_cfg = RIGHT_HAND_CFG.copy()
-    right_hand_cfg.prim_path = "/World/hands/right_hand"
+    right_hand: ArticulationCfg = RIGHT_HAND_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/right_hand",
+    )
 
-    left_hand_cfg = LEFT_HAND_CFG.copy()
-    left_hand_cfg.prim_path = "/World/hands/left_hand"
+    left_hand: ArticulationCfg = LEFT_HAND_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/left_hand",
+    )
 
-    right_hand_cfg.init_state.pos = (0.5, 0.0, 0.8)
-    left_hand_cfg.init_state.pos = (-0.5, 0.0, 0.8)
+    right_hand.init_state.pos = (0.5, 0.0, 0.8)
+    left_hand.init_state.pos = (-0.5, 0.0, 0.8)
 
-    right_hand = Articulation(cfg=right_hand_cfg)
-    left_hand = Articulation(cfg=left_hand_cfg)
-    # return the scene information
-    scene_entities = {
-        "shadow_hand": {
-            "left_hand": left_hand,
-            "right_hand": right_hand,
-        },
-    }
-    return scene_entities
-
-def run_simulator(sim: sim_utils.SimulationContext, entities: dict[str, Articulation]):
+def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
     # socket_server_manager.listen()
-    hands = entities["shadow_hand"]
-    left_hand = hands["left_hand"]
-    right_hand = hands["right_hand"]
-
-    print("The Left Hand Joint Names: ")
-    print(left_hand.joint_names)
-    print("The Right Hand Joint Names: ")
-    print(right_hand.joint_names)
+    left_hand = scene["left_hand"]
+    right_hand = scene["right_hand"]
 
     sim_dt = sim.get_physics_dt()
     # Simulation loop
@@ -88,15 +80,12 @@ def run_simulator(sim: sim_utils.SimulationContext, entities: dict[str, Articula
 
         left_hand_controller.step(left_hand, left_info)
         right_hand_controller.step(right_hand, right_info)
-        # rb_controller.step(rigid)
 
-        left_hand.write_data_to_sim()
-        right_hand.write_data_to_sim()
+        scene.write_data_to_sim()
         # Perform step
         sim.step(render=True)
         # Update buffers
-        left_hand.update(sim_dt)
-        right_hand.update(sim_dt)
+        scene.update(sim_dt)
 
 
 def main():
@@ -110,13 +99,14 @@ def main():
     # Set main camera
     sim.set_camera_view([0.0, -2.5, 4.0], [0.0, 0.0, 2.0])
     # Design scene
-    scene_entities = design_scene()
+    scene_cfg = SceneCfg(num_envs=args_cli.num_envs, env_spacing=2.0)
+    scene = InteractiveScene(scene_cfg)
     # Play the simulator
     sim.reset()
     # Now we are ready!
     print("[INFO]: Setup complete...")
     # Run the simulator
-    run_simulator(sim, scene_entities)
+    run_simulator(sim, scene)
 
 
 if __name__ == "__main__":
