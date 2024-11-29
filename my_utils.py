@@ -148,26 +148,36 @@ def __right_hand_decode(frame_data: torch.Tensor, thumb_dofs: torch.Tensor)->tup
     root_pos = position_left2right(frame_data[:3])
     quaternions = convert_quat_to_wxyz(frame_data[3:].reshape(-1, 4)[indices])
     root_quat = quaternion_left2right(quaternions[0])
+    # 这些 index 是从 unity 那边导出的对应的 index 勿动
     finger_root_orientation = quaternions[[4, 7 ,10, 13]]
-    other_joint_orientation = quaternions[[2, 3, 5, 6, 8, 9, 11, 12, 14, 15]]
+    other_joint_orientation = quaternions[[5, 6, 8, 9, 11, 12, 14, 15]]
 
     # Init joints indices
-    dof1_positive_idx = [12, 17, 13, 18, 14, 19, 20, 22]
-    dof1_negative_idx = [21, 23]
-    dof2_finger_idx = [[1, 2, 3, 10], [7, 8, 9, 15]]
+    dof1_positive_idx = [
+        12, 17, 13, 18, 14, 19, 20, 22 # 这一行是控制四个手指其他关节的上下旋转的 hinge index
+    ]
+    dof2_finger_idx = [
+        [1, 2, 3, 10], # 这一行控制四个手指根部的上下旋转的 hinge index
+        [7, 8, 9, 15]  # 这一行控制四个手指根部的左右旋转的 hinge index
+    ]
 
     dof = torch.zeros(24, dtype=root_pos.dtype)
-    #1. convert finger other joints orientation
-    x, y, z = euler_from_quat(other_joint_orientation, 1, 2, 3)
-    dof[dof1_negative_idx + dof1_positive_idx] = -z.flatten() 
-
-    #2. Convert finger root orientation
+    # 转换四个手指上下旋转（这里不考虑左右旋转了）
     x, z, y = euler_from_quat(finger_root_orientation, 1, 3, 2)
     # dof[dof2_finger_idx[0]] = -y.flatten()
-    dof[dof2_finger_idx[1]] = -z.flatten()
 
-    #3. Convert thumb root orientation
+    dof[dof2_finger_idx[1]] = -z.flatten()
+    # 转换四个手指其他关节的上下旋转
+    x, y, z = euler_from_quat(other_joint_orientation, 1, 2, 3)
+    dof[dof1_positive_idx] = -z.flatten() 
+
+    # 直接读取 thumb dof
     dof[[5, 11, 16, 21, 23]] = thumb_dofs
+
+    # 为了方便将中指的旋转直接赋予到其他手指上
+    dof[[1, 3, 10]] = dof[[1]] # 根部旋转统一
+    dof[[12, 14, 20]] = dof[[13]] # J2 统一
+    dof[[17, 19, 22]] = dof[[18]] # J3 统一
     return root_pos.float(), root_quat.float(), dof
 
 
@@ -180,22 +190,26 @@ def __left_hand_decode(frame_data: torch.Tensor, thumb_dofs: torch.Tensor)->tupl
     quaternions = convert_quat_to_wxyz(frame_data[3:].reshape(-1, 4)[indices])
     root_quat = quaternion_left2right(quaternions[0])
     finger_root_orientation = quaternions[[4, 7 ,10, 13]]
-    other_joint_orientation = quaternions[[2, 3, 5, 6, 8, 9, 11, 12, 14, 15]]
+    other_joint_orientation = quaternions[[5, 6, 8, 9, 11, 12, 14, 15]]
 
     # Init joints indices
-    dof1_positive_idx = [12, 17, 13, 18, 14, 19, 20, 22]
-    dof2_finger_idx = [[1, 2, 3, 10], [7, 8, 9, 15]]
-    dof1_negative_idx = [21, 23]
+    dof1_positive_idx = [
+        12, 17, 13, 18, 14, 19, 20, 22
+    ]
+    dof2_finger_idx = [
+        [1, 2, 3, 10],
+        [7, 8, 9, 15]
+    ]
 
     dof = torch.zeros(24, dtype=root_pos.dtype)
-    #1. convert finger other joints orientation
-    x, y, z = euler_from_quat(other_joint_orientation, 1, 2, 3)
-    dof[dof1_negative_idx + dof1_positive_idx] = z.flatten() 
-
     #2. Convert finger root orientation
     x, z, y = euler_from_quat(finger_root_orientation, 1, 3, 2)
     # dof[dof2_finger_idx[0]] = -y.flatten()
     dof[dof2_finger_idx[1]] = z.flatten()
+
+    #1. convert finger other joints orientation
+    x, y, z = euler_from_quat(other_joint_orientation, 1, 2, 3)
+    dof[dof1_positive_idx] = z.flatten() 
 
     #3. Convert thumb root orientation
     dof[[5, 11, 16, 21, 23]] = thumb_dofs

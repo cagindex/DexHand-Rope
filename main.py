@@ -61,6 +61,9 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
     left_hand = scene["left_hand"]
     right_hand = scene["right_hand"]
 
+    for i, name in list(enumerate(right_hand.joint_names)):
+        print(f"Joint {i}: {name}")
+
     sim_dt = sim.get_physics_dt()
     # Simulation loop
     manager = Socket_Manager(host='127.0.0.1', port=6781)
