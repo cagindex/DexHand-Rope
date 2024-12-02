@@ -18,9 +18,7 @@ simulation_app = app_launcher.app
 ##############################
 ##############################
 import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.assets import AssetBaseCfg
-from omni.isaac.lab.assets import RigidObject, RigidObjectCfg
-from omni.isaac.lab.assets import Articulation, ArticulationCfg
+from omni.isaac.lab.assets import AssetBaseCfg, ArticulationCfg
 from omni.isaac.lab.scene import InteractiveScene, InteractiveSceneCfg
 from omni.isaac.lab.sim import SimulationContext
 from omni.isaac.lab.utils import configclass
@@ -29,31 +27,24 @@ from my_utils import reset_scene_pose
 import torch
 import numpy as np
 import keyboard as ky
-from model_configs import RIGHT_HAND_CFG, LEFT_HAND_CFG, ROPE_CFG 
+from model_configs import DOME_LIGHT_CFG, CROSS_CFG, ROPE_CFG
 
 
 
 @configclass
 class SceneCfg(InteractiveSceneCfg):
     """Designs the scene."""
-    # Ground-plane
-    ground = AssetBaseCfg(
-        prim_path="/World/defaultGroundPlane",
-        spawn=sim_utils.GroundPlaneCfg()
-    )
     # Lights
-    dome_light = AssetBaseCfg(
-        prim_path="/World/Light",
-        spawn=sim_utils.DomeLightCfg(
-            intensity=3000.0,
-            color=(0.75, 0.75, 0.75)
-        )
-    )
+    dome_light = DOME_LIGHT_CFG.replace(prim_path="/World/Light")
+    dome_light.spawn.intensity=1000.0
+    # cross 
+    cross = CROSS_CFG.replace(prim_path="/World/Cross")
     #rope
     rope: ArticulationCfg = ROPE_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Rope"
     )
-    rope.init_state.pos = (0.1, 0.3, 1.0)
+    rope.init_state.pos = (0.0, 0.0, 0.3)
+    rope.init_state.rot = (0.5, 0.5, 0.5, 0.5)
 
 
 '''
@@ -65,7 +56,12 @@ https://docs.omniverse.nvidia.com/kit/docs/pxr-usd-api/latest/pxr.html
 '''
 def run_simulator(sim: sim_utils.SimulationContext, scene:InteractiveScene):
     # Define simulation stepping
+    reset_scene_pose(scene)
     sim_dt = sim.get_physics_dt()
+
+    rope = scene['rope']
+    for joint_name, joint_limit in zip(rope.joint_names, rope.data.default_joint_limits[0]):
+        print(f"{joint_name}: {joint_limit}")
 
     # Simulation loop
     while simulation_app.is_running():

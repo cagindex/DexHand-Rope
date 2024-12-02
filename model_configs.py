@@ -3,8 +3,40 @@
 '''
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.actuators.actuator_cfg import ImplicitActuatorCfg
-from omni.isaac.lab.assets.articulation import ArticulationCfg
+from omni.isaac.lab.assets import ArticulationCfg
+from omni.isaac.lab.assets import RigidObjectCfg
+from omni.isaac.lab.assets import AssetBaseCfg
 
+############################################################
+# Asset Configs
+############################################################
+GROUND_CFG = AssetBaseCfg(
+    prim_path="/World/defaultGroundPlane",
+    spawn=sim_utils.GroundPlaneCfg()
+)
+
+DOME_LIGHT_CFG = AssetBaseCfg(
+    prim_path="/World/Light",
+    spawn=sim_utils.DomeLightCfg(
+        intensity=3000.0,
+        color=(0.75, 0.75, 0.75)
+    )
+)
+
+CROSS_CFG = AssetBaseCfg(
+    prim_path="/World/Cross",
+    spawn=sim_utils.UsdFileCfg(
+        usd_path="./models/cross.usd"
+    )
+)
+
+############################################################
+# Rigid Object Configs
+############################################################
+
+############################################################
+# Articulation Configs
+############################################################
 LEFT_HAND_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path="./models/left_hand_new.usd",
@@ -126,6 +158,34 @@ RIGHT_HAND_CFG = ArticulationCfg(
     soft_joint_pos_limit_factor=1.0,
 )
 
+ROPE_FIXED_CFG = ArticulationCfg(
+    spawn=sim_utils.UsdFileCfg(
+        usd_path="./models/rope3_fixed.usd",
+        activate_contact_sensors=False,
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            # retain_accelerations=False,
+            # enable_gyroscopic_forces=True,
+            # max_depenetration_velocity=1000.0,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            fix_root_link=True,
+            enabled_self_collisions=True,
+            # solver_position_iteration_count=64,
+            # solver_velocity_iteration_count=4,
+            sleep_threshold=0.005,
+            stabilization_threshold=0.0005,
+        ),
+        # collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.005, rest_offset=0.0),
+        joint_drive_props=sim_utils.JointDrivePropertiesCfg(drive_type="force"),
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.0, 0.5),
+        rot=(1.0, 0.0, 0.0, 0.0),
+        joint_pos={".*": 0.0},
+    ),
+)
+
 ROPE_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path="./models/rope3.usd",
@@ -137,7 +197,7 @@ ROPE_CFG = ArticulationCfg(
             # max_depenetration_velocity=1000.0,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            fix_root_link=True,
+            fix_root_link=False,
             enabled_self_collisions=True,
             # solver_position_iteration_count=64,
             # solver_velocity_iteration_count=4,
