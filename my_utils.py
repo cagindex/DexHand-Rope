@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import omni.isaac.lab.utils.math as math_utils
+from omni.isaac.lab.scene import InteractiveScene, InteractiveSceneCfg
 
 ######################################
 # Class Definition
@@ -219,11 +220,38 @@ def __left_hand_decode(frame_data: torch.Tensor, thumb_dofs: torch.Tensor)->tupl
 def set_object_gravity(obj, gravity: bool, env_ids: list = [0]):
     """
     Set the gravity of an object.
-    gravity: True to enable gravity, False to disable.
-    obj must be omni.isaac.lab.assets.RigidObject or omni.isaac.lab.assets.ArticulatedObject.
+
+    :param obj: must be omni.isaac.lab.assets.RigidObject or omni.isaac.lab.assets.ArticulatedObject.
+    :param gravity: True to enable gravity, False to disable.
     """
     env_ids = torch.tensor(env_ids, device=obj.device)
     current_gravity_status = obj.root_physx_view.get_disable_gravities()
     # 0: disable_gravity=false(with gravity) / 1: disable_gravity=true(without gravity)
     current_gravity_status[env_ids] = int(not gravity)
     obj.root_physx_view.set_disable_gravities(current_gravity_status, env_ids)
+
+
+def reset_scene_pose(scene: InteractiveScene, exclude_objects: set[str] = set()):
+    """Reset Rigid Objects and Articulated Objects in the scene to their default pose.
+
+    :param scene: The scene to reset.
+    :param exclude_objects: A set of object names to exclude from resetting.
+    """
+    for name, articulation in scene.articulations.items():
+        if name in exclude_objects:
+            continue
+        root_state = articulation.data.default_root_state.clone()
+        articulation.write_root_state_to_sim(root_state)
+
+        joint_pos, joint_vel = articulation.data.default_joint_pos.clone(), articulation.data.default_joint_vel.clone()
+        articulation.write_joint_state_to_sim(joint_pos, joint_vel)
+
+        articulation.reset()
+    
+    for name, rigid_object in scene.rigid_objects.items():
+        if name in exclude_objects:
+            continue
+        root_state = rigid_object.data.default_root_state.clone()
+        rigid_object.write_root_state_to_sim(root_state)
+
+        rigid_object.reset()
