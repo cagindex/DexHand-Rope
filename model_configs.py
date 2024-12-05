@@ -71,10 +71,12 @@ LEFT_HAND_CFG = ArticulationCfg(
                 "lh_WRJ2": 4.785,
                 "lh_WRJ1": 2.175,
                 "lh_(FF|MF|RF|LF)J2": 0.7245,
+
                 "lh_FFJ(4|3)": 0.9,
                 "lh_MFJ(4|3)": 0.9,
                 "lh_RFJ(4|3)": 0.9,
                 "lh_LFJ(5|4|3)": 0.9,
+
                 "lh_THJ5": 2.3722,
                 "lh_THJ4": 1.45,
                 "lh_THJ(3|2)": 0.99,
@@ -82,7 +84,7 @@ LEFT_HAND_CFG = ArticulationCfg(
             },
             stiffness={
                 "lh_WRJ.*": 5.0,
-                "lh_(FF|MF|RF|LF|TH)J(4|3|2)": 1.0,
+                "lh_(FF|MF|RF|LF|TH)J(4|3|2)": 2.0,
                 "lh_(LF|TH)J5": 1.0,
                 "lh_THJ1": 1.0,
             },
@@ -143,7 +145,7 @@ RIGHT_HAND_CFG = ArticulationCfg(
             },
             stiffness={
                 "rh_WRJ.*": 5.0,
-                "rh_(FF|MF|RF|LF|TH)J(4|3|2)": 1.0,
+                "rh_(FF|MF|RF|LF|TH)J(4|3|2)": 2.0,
                 "rh_(LF|TH)J5": 1.0,
                 "rh_THJ1": 1.0,
             },
