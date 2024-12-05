@@ -210,6 +210,8 @@ ROPE_CFG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.5),
         rot=(1.0, 0.0, 0.0, 0.0),
-        joint_pos={".*": 0.0},
+        joint_pos={
+            "joint..:(1)": 0.2,
+        },
     ),
 )

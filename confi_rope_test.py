@@ -43,8 +43,8 @@ class SceneCfg(InteractiveSceneCfg):
     rope: ArticulationCfg = ROPE_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Rope"
     )
-    rope.init_state.pos = (0.0, 0.0, 0.3)
-    rope.init_state.rot = (0.5, 0.5, 0.5, 0.5)
+    rope.init_state.pos = (-0.1, 0.0, 0.3)
+    rope.init_state.rot = (0.7071, 0.7071, 0.0, 0.0)
 
 
 '''
