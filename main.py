@@ -21,7 +21,7 @@ import numpy as np
 from my_utils import *
 from socket_manager import Socket_Manager
 from controller import Articulation_Controller, Rigid_Body_Controller
-from model_configs import RIGHT_HAND_CFG, LEFT_HAND_CFG, CROSS_CFG, ROPE_CFG, DOME_LIGHT_CFG
+from model_configs import *
 import keyboard as ky
 
 @configclass
@@ -38,7 +38,7 @@ class SceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Rope"
     )
     rope.init_state.pos = (-0.1, -0.3, 1.3)
-    rope.init_state.rot = (0.7071, 0.7071, 0.0, 0.0)
+    rope.init_state.rot = (1.0, 0.0, 0.0, 0.0)
     # Articulation
     right_hand: ArticulationCfg = RIGHT_HAND_CFG.replace(
         prim_path="{ENV_REGEX_NS}/right_hand",
@@ -67,11 +67,11 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
     manager.listen()
     left_hand_controller = Articulation_Controller(
         robot=left_hand, root_name='lh_forearm',
-        pos_kp=1000.0, pos_kd=100.0, ore_kp=10.0, ore_kd=1.0
+        pos_kp=1000.0, pos_kd=100.0, ore_kp=50.0, ore_kd=3.0
     )
     right_hand_controller = Articulation_Controller(
         robot=right_hand, root_name='rh_forearm',
-        pos_kp=1000.0, pos_kd=100.0, ore_kp=10.0, ore_kd=1.0
+        pos_kp=1000.0, pos_kd=100.0, ore_kp=50.0, ore_kd=3.0
     )
     while simulation_app.is_running():
         # position, orientation, dof = manager.step()

@@ -50,8 +50,8 @@ LEFT_HAND_CFG = ArticulationCfg(
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
             fix_root_link=False,
             enabled_self_collisions=False,
-            solver_position_iteration_count=16,
-            solver_velocity_iteration_count=4,
+            solver_position_iteration_count=64,
+            solver_velocity_iteration_count=32,
             sleep_threshold=0.005,
             stabilization_threshold=0.0005,
         ),
@@ -113,8 +113,8 @@ RIGHT_HAND_CFG = ArticulationCfg(
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
             fix_root_link=False,
             enabled_self_collisions=False,
-            solver_position_iteration_count=16,
-            solver_velocity_iteration_count=8,
+            solver_position_iteration_count=64,
+            solver_velocity_iteration_count=32,
             sleep_threshold=0.005,
             stabilization_threshold=0.0005,
         ),
@@ -184,7 +184,6 @@ ROPE_FIXED_CFG = ArticulationCfg(
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.5),
         rot=(1.0, 0.0, 0.0, 0.0),
-        joint_pos={".*": 0.0},
     ),
 )
 
@@ -213,7 +212,22 @@ ROPE_CFG = ArticulationCfg(
         pos=(0.0, 0.0, 0.5),
         rot=(1.0, 0.0, 0.0, 0.0),
         joint_pos={
-            "joint..:(1)": 0.2,
+            ".*": 0.2,
         },
     ),
+    actuators={
+        "fingers": ImplicitActuatorCfg(
+            joint_names_expr=[".*"],
+            effort_limit={
+                ".*": 0.5,
+            },
+            stiffness={
+                ".*": 5.0,
+            },
+            damping={
+                ".*": 0.5,
+            },
+        ),
+    },
+    soft_joint_pos_limit_factor=1.0,
 )
