@@ -12,10 +12,13 @@ start_offset = np.array([0.0, 0.0, 0.5])
 num_capsules = 50
 capsule_radius = 0.02
 capsule_height = 0.02
-capsule_distance = 0.04
 capsule_density = 0.00005
+along_axis = "-Z"
 capsule_color=np.array([1.0, 0.0, 0.0])
-along_axis = "X"
+
+ground = False
+
+capsule_distance = capsule_height + capsule_radius # By convention, the distance should be (capsule_radius + capsule_height)
 
 JointFatherPath = "/World/Joints"
 coneAngleLimit = 110
@@ -25,6 +28,11 @@ rope_stiffness = 1
 fixed = True
 exclude_from_articulation = True
 
+#################################################################################
+# Utils functions
+#################################################################################
+along_axis = along_axis.upper()
+sign = -1 if along_axis[0] == "-" else 1
 stage = omni.usd.get_context().get_stage()
 def createJoint(stage, jointPath, coneAngleLimit, rope_damping, rope_stiffness):        
     joint = UsdPhysics.Joint.Define(stage, jointPath)
@@ -69,21 +77,21 @@ def createJoints(num_joints):
 def design_rope_capsules():
     capsules = []
 
-    dx0 = capsule_height / 2 + capsule_radius
-    if along_axis == "X":
-        dx = np.array([1.0, 0.0, 0.0])
+    _capsules_start_offset_value = (capsule_height / 2 + capsule_radius)
+    if along_axis[-1] == "X":
+        dx = np.array([1.0, 0.0, 0.0]) * sign
         dq = (0.7071, 0.0, 0.7071, 0.0)
-    elif along_axis == "Y":
-        dx = np.array([0.0, 1.0, 0.0])
+    elif along_axis[-1] == "Y":
+        dx = np.array([0.0, 1.0, 0.0]) * sign
         dq = (0.7071, 0.7071, 0.0, 0.0)
     else:   
-        dx = np.array([0.0, 0.0, 1.0])
+        dx = np.array([0.0, 0.0, 1.0]) * sign
         dq = (1.0, 0.0, 0.0, 0.0)
 
     for i in range(num_capsules):
         capsule = DynamicCapsule(
             prim_path=f"/World/Capsule_{i}",
-            position=dx * i * capsule_distance + (start_offset + dx0 * dx),
+            position=dx * i * capsule_distance + (start_offset + _capsules_start_offset_value * dx),
             color=capsule_color,
             radius=capsule_radius,
             height=capsule_height,
@@ -107,7 +115,7 @@ def design_joint(joint, object0, object1, local_dis0, local_dis1):
 
 def design_rope(capsules, joints):
     dx = Gf.Vec3f(0.0, 0.0, 1.0)
-    local_dis = dx * capsule_distance / 2
+    local_dis = (dx * (capsule_radius + capsule_height) / 2) * sign * (-1 if along_axis[-1] == "Y" else 1)
     for i in range(num_capsules - 1):
         joint = joints[i]
         capsule0 = capsules[i]
@@ -121,8 +129,8 @@ def design_scene():
     joints = createJoints(num_capsules - 1)
     design_rope(capsules, joints)
     if fixed :
-        dx = Gf.Vec3f(0.0, 0.0, 1.0)
-        local_dis = dx * capsule_distance / 2
+        dx = Gf.Vec3f(0.0, 0.0, 1.0) * sign * (-1 if along_axis[-1] == "Y" else 1)
+        local_dis = dx * (capsule_height / 2 + capsule_radius)
         fixed_joint = createJoint(stage, f"{JointFatherPath}/FixedJoint", 170, rope_damping, rope_stiffness)
         object0 = XFormPrim(f"/World/FixedPoint", position=start_offset)
         object1 = capsules[0]
@@ -139,8 +147,8 @@ def design_scene():
 ##############################################################################
 def main():
     PhysicsContext()
-    GroundPlane(prim_path="/World/groundPlane", size=10, color=np.array([0.5, 0.5, 0.5]))
-
+    if ground:
+        GroundPlane(prim_path="/World/groundPlane", size=10, color=np.array([0.5, 0.5, 0.5]))
     design_scene( )
 
 main()
