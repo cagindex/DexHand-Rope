@@ -33,6 +33,11 @@ CROSS_CFG = AssetBaseCfg(
 ############################################################
 # Rigid Object Configs
 ############################################################
+SCENE1_CFG = AssetBaseCfg(
+    spawn=sim_utils.UsdFileCfg(
+        usd_path='./models/Scene1.usd',
+    )
+)
 
 ############################################################
 # Articulation Configs

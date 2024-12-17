@@ -27,8 +27,7 @@ from my_utils import reset_scene_pose
 import torch
 import numpy as np
 import keyboard as ky
-from model_configs import DOME_LIGHT_CFG, CROSS_CFG, ROPE_CFG
-
+from model_configs import *
 
 
 @configclass
@@ -38,13 +37,18 @@ class SceneCfg(InteractiveSceneCfg):
     dome_light = DOME_LIGHT_CFG.replace(prim_path="/World/Light")
     dome_light.spawn.intensity=1000.0
     # cross 
-    cross = CROSS_CFG.replace(prim_path="/World/Cross")
-    #rope
-    rope: ArticulationCfg = ROPE_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Rope"
-    )
-    rope.init_state.pos = (-0.1, 0.0, 0.3)
-    rope.init_state.rot = (0.7071, 0.7071, 0.0, 0.0)
+    # cross = CROSS_CFG.replace(prim_path="/World/Cross")
+    # rope
+    # rope: ArticulationCfg = ROPE_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Rope"
+    # )
+    # rope.init_state.pos = (-0.1, 0.0, 0.3)
+    # rope.init_state.rot = (0.7071, 0.7071, 0.0, 0.0)
+
+    #scene
+    scene1 = SCENE1_CFG.replace(prim_path="/World/Scene1")
+    capsules = RigidObjectCfg(prim_path="/World/Scene1/Rope/Capsule.*")
+
 
 
 '''
@@ -55,13 +59,10 @@ https://docs.omniverse.nvidia.com/dev-guide/latest/programmer_ref/usd/hierarchy-
 https://docs.omniverse.nvidia.com/kit/docs/pxr-usd-api/latest/pxr.html
 '''
 def run_simulator(sim: sim_utils.SimulationContext, scene:InteractiveScene):
+    scene['capsules'].data.default_root_state = (scene['capsules'].data.root_state_w)
     # Define simulation stepping
     reset_scene_pose(scene)
     sim_dt = sim.get_physics_dt()
-
-    rope = scene['rope']
-    for joint_name, joint_limit in zip(rope.joint_names, rope.data.default_joint_limits[0]):
-        print(f"{joint_name}: {joint_limit}")
 
     # Simulation loop
     while simulation_app.is_running():
